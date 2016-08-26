@@ -123,6 +123,14 @@ enum write_granularity {
 #define FEATURE_WRSR_EITHER	(FEATURE_WRSR_EWSR | FEATURE_WRSR_WREN)
 #define FEATURE_OTP		(1 << 8)
 #define FEATURE_QPI		(1 << 9)
+/* Feature bits used for 4-bytes addressing mode */
+#define FEATURE_4BA_SUPPORT		(1 << 10)
+#define FEATURE_4BA_ONLY 		(1 << 11)
+#define FEATURE_4BA_EXTENDED_ADDR_REG	(1 << 12)
+#define FEATURE_4BA_DIRECT_READ		(1 << 13)
+#define FEATURE_4BA_DIRECT_WRITE	(1 << 14)
+#define FEATURE_4BA_ALL_ERASERS_DIRECT  (1 << 15)
+#define FEATURE_4BA_ALL_DIRECT  (FEATURE_4BA_DIRECT_READ | FEATURE_4BA_DIRECT_WRITE | FEATURE_4BA_ALL_ERASERS_DIRECT)
 
 enum test_state {
 	OK = 0,
@@ -166,6 +174,14 @@ struct flashchip {
 	/* Chip page size in bytes */
 	unsigned int page_size;
 	int feature_bits;
+
+	/* set of function pointers to use in 4-bytes addressing mode */
+	struct four_bytes_addr_funcs_set {
+		int (*enter_4ba) (struct flashctx *flash);
+		int (*read_nbyte) (struct flashctx *flash, unsigned int addr, uint8_t *bytes, unsigned int len);
+		int (*program_byte) (struct flashctx *flash, unsigned int addr, const uint8_t databyte);
+		int (*program_nbyte) (struct flashctx *flash, unsigned int addr, const uint8_t *bytes, unsigned int len);
+	} four_bytes_addr_funcs;
 
 	/* Indicate how well flashrom supports different operations of this flash chip. */
 	struct tested {
@@ -343,6 +359,11 @@ __attribute__((format(printf, 2, 3)));
 #define msg_gspew(...)	print(MSG_SPEW, __VA_ARGS__)	/* general debug spew  */
 #define msg_pspew(...)	print(MSG_SPEW, __VA_ARGS__)	/* programmer debug spew  */
 #define msg_cspew(...)	print(MSG_SPEW, __VA_ARGS__)	/* chip debug spew  */
+
+/* Read progress will be shown for reads more than 256KB */
+#define MIN_LENGTH_TO_SHOW_READ_PROGRESS 256 * 1024
+/* Read progress will be shown for erases and writes more than 64KB */
+#define MIN_LENGTH_TO_SHOW_ERASE_AND_WRITE_PROGRESS 64 * 1024
 
 /* layout.c */
 int register_include_arg(char *name);

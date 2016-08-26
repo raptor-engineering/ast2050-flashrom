@@ -1527,6 +1527,17 @@ static int walk_eraseregions(struct flashctx *flash, int erasefunction,
 	unsigned int start = 0;
 	unsigned int len;
 	struct block_eraser eraser = flash->chip->block_erasers[erasefunction];
+	int show_progress = 0;
+	unsigned int percent_last, percent_current;
+	unsigned long size = flash->chip->total_size * 1024;
+
+	/* progress visualizaion init */
+	if(size >= MIN_LENGTH_TO_SHOW_ERASE_AND_WRITE_PROGRESS) {
+		msg_cinfo(" "); /* only this space will go to logfile but all strings with \b wont. */
+		msg_cinfo("\b 0%%");
+		percent_last = percent_current = 0;
+		show_progress = 1; /* enable progress visualizaion */
+	}
 
 	for (i = 0; i < NUM_ERASEREGIONS; i++) {
 		/* count==0 for all automatically initialized array
@@ -1544,8 +1555,20 @@ static int walk_eraseregions(struct flashctx *flash, int erasefunction,
 				return 1;
 			}
 			start += len;
+
+			if(show_progress) {
+				percent_current = (unsigned int) ((unsigned long long)start * 100 / size);
+				if(percent_current != percent_last) {
+					msg_cinfo("\b\b\b%2d%%", percent_current);
+					percent_last = percent_current;
+				}
+			}
 		}
 	}
+
+	if(show_progress)
+		msg_cinfo("\b\b\b\b"); /* remove progress percents from the screen */
+
 	msg_cdbg("\n");
 	return 0;
 }
@@ -2000,6 +2023,44 @@ int doit(struct flashctx *flash, int force, const char *filename, int read_it,
 	 */
 	if (flash->chip->unlock)
 		flash->chip->unlock(flash);
+
+	/* Switching to 4-Bytes Addressing mode if flash chip supports it */
+	if(flash->chip->feature_bits & FEATURE_4BA_SUPPORT) {
+		/* Do not switch if chip is already in 4-bytes addressing mode */
+		if (flash->chip->feature_bits & FEATURE_4BA_ONLY) {
+			msg_cdbg("Flash chip is already in 4-bytes addressing mode.\n");
+		}
+		/* Do not switch to 4-Bytes Addressing mode if using Extended Address Register */
+		else if(flash->chip->feature_bits & FEATURE_4BA_EXTENDED_ADDR_REG) {
+			msg_cdbg("Using 4-bytes addressing with extended address register.\n");
+		}
+		/* Go to 4-Bytes Addressing mode if selected
+		   operation requires 4-Bytes Addressing mode
+		   (no need if functions are direct-4BA) */
+		else if(((read_it || verify_it)
+			&& (!(flash->chip->feature_bits & FEATURE_4BA_DIRECT_READ)))
+		   || ((erase_it || write_it)
+			&& ((flash->chip->feature_bits & FEATURE_4BA_ALL_DIRECT) != FEATURE_4BA_ALL_DIRECT))) {
+
+			if (!flash->chip->four_bytes_addr_funcs.enter_4ba) {
+				msg_cerr("No function for Enter 4-bytes addressing mode for this flash chip.\n"
+					"Please report to flashrom@flashrom.org\n");
+				return 1;
+			}
+
+			if(flash->chip->four_bytes_addr_funcs.enter_4ba(flash)) {
+				msg_cerr("Switching to 4-bytes addressing mode failed!\n");
+				return 1;
+			}
+
+			msg_cdbg("Switched to 4-bytes addressing mode.\n");
+		}
+		/* Do not switch to 4-Bytes Addressing mode if all instructions are direct-4BA
+		   or if the flash chip is 4-Bytes Addressing Only and always in 4BA-mode */
+		else {
+			msg_cdbg2("No need to switch to 4-bytes addressing mode.\n");
+		}
+	}
 
 	if (read_it) {
 		return read_flash_to_file(flash, filename);

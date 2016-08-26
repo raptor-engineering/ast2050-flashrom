@@ -90,7 +90,8 @@ int print(enum msglevel level, const char *fmt, ...)
 			fflush(output_type);
 	}
 #ifndef STANDALONE
-	if ((level <= verbose_logfile) && logfile) {
+	/* skip of msgs starting from '\b' added to skip progress percents */
+	if ((level <= verbose_logfile) && logfile && (!fmt || fmt[0] != '\b')) {
 		va_start(ap, fmt);
 		ret = vfprintf(logfile, fmt, ap);
 		va_end(ap);

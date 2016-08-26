@@ -28,6 +28,7 @@
 #include "chipdrivers.h"
 #include "programmer.h"
 #include "spi.h"
+#include "spi4ba.h"
 
 static int spi_rdid(struct flashctx *flash, unsigned char *readarr, int bytes)
 {
@@ -948,6 +949,16 @@ int spi_read_chunked(struct flashctx *flash, uint8_t *buf, unsigned int start,
 	int rc = 0;
 	unsigned int i, j, starthere, lenhere, toread;
 	unsigned int page_size = flash->chip->page_size;
+	int show_progress = 0;
+	unsigned int percent_last, percent_current;
+
+	/* progress visualizaion init */
+	if(len >= MIN_LENGTH_TO_SHOW_READ_PROGRESS) {
+		msg_cinfo(" "); /* only this space will go to logfile but all strings with \b wont. */
+		msg_cinfo("\b 0%%");
+		percent_last = percent_current = 0;
+		show_progress = 1; /* enable progress visualizaion */
+	}
 
 	/* Warning: This loop has a very unusual condition and body.
 	 * The loop needs to go through each page with at least one affected
@@ -966,13 +977,28 @@ int spi_read_chunked(struct flashctx *flash, uint8_t *buf, unsigned int start,
 		lenhere = min(start + len, (i + 1) * page_size) - starthere;
 		for (j = 0; j < lenhere; j += chunksize) {
 			toread = min(chunksize, lenhere - j);
-			rc = spi_nbyte_read(flash, starthere + j, buf + starthere - start + j, toread);
+			rc = (flash->chip->feature_bits & FEATURE_4BA_SUPPORT) == 0
+				? spi_nbyte_read(flash, starthere + j, buf + starthere - start + j, toread)
+				: flash->chip->four_bytes_addr_funcs.read_nbyte(flash, starthere + j,
+					buf + starthere - start + j, toread);
 			if (rc)
 				break;
 		}
 		if (rc)
 			break;
+
+		if(show_progress) {
+			percent_current = (unsigned int) ((unsigned long long)(starthere +
+									lenhere - start) * 100 / len);
+			if(percent_current != percent_last) {
+				msg_cinfo("\b\b\b%2d%%", percent_current);
+				percent_last = percent_current;
+			}
+		}
 	}
+
+	if(show_progress && !rc)
+		msg_cinfo("\b\b\b\b"); /* remove progress percents from the screen */
 
 	return rc;
 }
@@ -1011,7 +1037,10 @@ int spi_write_chunked(struct flashctx *flash, const uint8_t *buf, unsigned int s
 		lenhere = min(start + len, (i + 1) * page_size) - starthere;
 		for (j = 0; j < lenhere; j += chunksize) {
 			towrite = min(chunksize, lenhere - j);
-			rc = spi_nbyte_program(flash, starthere + j, buf + starthere - start + j, towrite);
+			rc = (flash->chip->feature_bits & FEATURE_4BA_SUPPORT) == 0
+				? spi_nbyte_program(flash, starthere + j, buf + starthere - start + j, towrite)
+				: flash->chip->four_bytes_addr_funcs.program_nbyte(flash, starthere + j,
+					buf + starthere - start + j, towrite);
 			if (rc)
 				break;
 			while (spi_read_status_register(flash) & SPI_SR_WIP)
@@ -1037,7 +1066,9 @@ int spi_chip_write_1(struct flashctx *flash, const uint8_t *buf, unsigned int st
 	int result = 0;
 
 	for (i = start; i < start + len; i++) {
-		result = spi_byte_program(flash, i, buf[i - start]);
+		result = (flash->chip->feature_bits & FEATURE_4BA_SUPPORT) == 0
+			? spi_byte_program(flash, i, buf[i - start])
+			: flash->chip->four_bytes_addr_funcs.program_byte(flash, i, buf[i - start]);
 		if (result)
 			return 1;
 		while (spi_read_status_register(flash) & SPI_SR_WIP)

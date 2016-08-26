@@ -945,7 +945,10 @@ static int serprog_spi_read(struct flashctx *flash, uint8_t *buf,
 	for (i = 0; i < len; i += cur_len) {
 		int ret;
 		cur_len = min(max_read, (len - i));
-		ret = spi_nbyte_read(flash, start + i, buf + i, cur_len);
+		ret = (flash->chip->feature_bits & FEATURE_4BA_SUPPORT) == 0
+			? spi_nbyte_read(flash, start + i, buf + i, cur_len)
+			: flash->chip->four_bytes_addr_funcs.read_nbyte(flash,
+						 start + i, buf + i, cur_len);
 		if (ret)
 			return ret;
 	}
