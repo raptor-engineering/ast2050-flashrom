@@ -134,6 +134,18 @@ const struct programmer_entry programmer_table[] = {
 	},
 #endif
 
+#if CONFIG_AST2400 == 1
+	{
+		.name			= "ast2400",
+		.type			= PCI,
+		.devs.dev		= bmc_aspeed,
+		.init			= ast2400_init,
+		.map_flash_region	= fallback_map,
+		.unmap_flash_region	= fallback_unmap,
+		.delay			= internal_delay,
+	},
+#endif
+
 #if CONFIG_DRKAISER == 1
 	{
 		.name			= "drkaiser",

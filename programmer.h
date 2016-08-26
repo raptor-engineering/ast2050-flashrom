@@ -45,6 +45,9 @@ enum programmer {
 #if CONFIG_GFXNVIDIA == 1
 	PROGRAMMER_GFXNVIDIA,
 #endif
+#if CONFIG_AST2400 == 1
+	PROGRAMMER_AST2400,
+#endif
 #if CONFIG_DRKAISER == 1
 	PROGRAMMER_DRKAISER,
 #endif
@@ -399,6 +402,12 @@ int gfxnvidia_init(void);
 extern const struct dev_entry gfx_nvidia[];
 #endif
 
+/* ast2400.c */
+#if CONFIG_AST2400 == 1
+int ast2400_init(void);
+extern const struct dev_entry bmc_aspeed[];
+#endif
+
 /* drkaiser.c */
 #if CONFIG_DRKAISER == 1
 int drkaiser_init(void);
@@ -599,6 +608,10 @@ enum spi_controller {
 #endif
 #if CONFIG_CH341A_SPI == 1
 	SPI_CONTROLLER_CH341A_SPI,
+#endif
+
+#if CONFIG_AST2400 == 1
+	SPI_CONTROLLER_AST2400,
 #endif
 };
 
