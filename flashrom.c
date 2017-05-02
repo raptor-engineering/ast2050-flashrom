@@ -5,6 +5,7 @@
  * Copyright (C) 2004 Tyan Corp <yhlu@tyan.com>
  * Copyright (C) 2005-2008 coresystems GmbH
  * Copyright (C) 2008,2009 Carl-Daniel Hailfinger
+ * Copyright (C) 2016-2017 Raptor Engineering, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -134,11 +135,23 @@ const struct programmer_entry programmer_table[] = {
 	},
 #endif
 
+#if CONFIG_AST1100 == 1
+	{
+		.name			= "ast1100",
+		.type			= PCI,
+		.devs.dev		= bmc_aspeed_ast1100,
+		.init			= ast1100_init,
+		.map_flash_region	= fallback_map,
+		.unmap_flash_region	= fallback_unmap,
+		.delay			= internal_delay,
+	},
+#endif
+
 #if CONFIG_AST2400 == 1
 	{
 		.name			= "ast2400",
 		.type			= PCI,
-		.devs.dev		= bmc_aspeed,
+		.devs.dev		= bmc_aspeed_ast2400,
 		.init			= ast2400_init,
 		.map_flash_region	= fallback_map,
 		.unmap_flash_region	= fallback_unmap,

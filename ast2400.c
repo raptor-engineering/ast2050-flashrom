@@ -1,7 +1,7 @@
 /*
  * This file is part of the flashrom project.
  *
- * Copyright (C) 2016 Raptor Engineering, LLC
+ * Copyright (C) 2016 - 2017 Raptor Engineering, LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,16 +71,16 @@
 #define AST2400_WDT_RESET_MODE_MASK	(0x3 << 5)
 #define AST2400_WDT_RESET_CPU_ONLY	(0x2 << 5)
 
-uint8_t *aspeed_bar = 0;
-uint8_t aspeed_spi_bus = 0;
-uint8_t aspeed_halt_cpu = 0;
-uint8_t aspeed_resume_cpu = 0;
-uint8_t aspeed_tickle_fw = 0;
-uint32_t aspeed_flash_mmio_offset = 0;
-uint32_t aspeed_host_mode = 0;
-uint32_t original_wdt_conf = 0;
+uint8_t *ast2400_device_bar = 0;
+uint8_t ast2400_device_spi_bus = 0;
+uint8_t ast2400_device_halt_cpu = 0;
+uint8_t ast2400_device_resume_cpu = 0;
+uint8_t ast2400_device_tickle_fw = 0;
+uint32_t ast2400_device_flash_mmio_offset = 0;
+uint32_t ast2400_device_host_mode = 0;
+uint32_t ast2400_original_wdt_conf = 0;
 
-const struct dev_entry bmc_aspeed[] = {
+const struct dev_entry bmc_aspeed_ast2400[] = {
 	{PCI_VENDOR_ID_ASPEED, 0x2000, OK, "ASPEED", "AST2400" },
 
 	{0},
@@ -104,54 +104,54 @@ static const struct spi_master spi_master_ast2400 = {
 
 static int ast2400_set_a2b_bridge_scu(void)
 {
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
-	pci_mmio_writel(AST2400_SCU_APB_ADDR & 0xffff0000, aspeed_bar + 0xf004);
-	pci_mmio_writel(0x1, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
+	pci_mmio_writel(AST2400_SCU_APB_ADDR & 0xffff0000, ast2400_device_bar + 0xf004);
+	pci_mmio_writel(0x1, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
 
 static int ast2400_set_a2b_bridge_wdt(void)
 {
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
-	pci_mmio_writel(AST2400_WDT_APB_ADDR & 0xffff0000, aspeed_bar + 0xf004);
-	pci_mmio_writel(0x1, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
+	pci_mmio_writel(AST2400_WDT_APB_ADDR & 0xffff0000, ast2400_device_bar + 0xf004);
+	pci_mmio_writel(0x1, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
 
 static int ast2400_set_a2b_bridge_smc(void)
 {
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
-	pci_mmio_writel(AST2400_SMC_APB_ADDR, aspeed_bar + 0xf004);
-	pci_mmio_writel(0x1, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
+	pci_mmio_writel(AST2400_SMC_APB_ADDR, ast2400_device_bar + 0xf004);
+	pci_mmio_writel(0x1, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
 
 static int ast2400_set_a2b_bridge_spi(void)
 {
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
-	pci_mmio_writel(AST2400_SPI_APB_ADDR, aspeed_bar + 0xf004);
-	pci_mmio_writel(0x1, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
+	pci_mmio_writel(AST2400_SPI_APB_ADDR, ast2400_device_bar + 0xf004);
+	pci_mmio_writel(0x1, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
 
 static int ast2400_set_a2b_bridge_smc_flash(void)
 {
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
-	pci_mmio_writel(AST2400_SMC_FLASH_MMIO_ADDR + aspeed_flash_mmio_offset, aspeed_bar + 0xf004);
-	pci_mmio_writel(0x1, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
+	pci_mmio_writel(AST2400_SMC_FLASH_MMIO_ADDR + ast2400_device_flash_mmio_offset, ast2400_device_bar + 0xf004);
+	pci_mmio_writel(0x1, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
 
 static int ast2400_set_a2b_bridge_spi_flash(void)
 {
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
-	pci_mmio_writel(AST2400_SPI_FLASH_MMIO_ADDR, aspeed_bar + 0xf004);
-	pci_mmio_writel(0x1, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
+	pci_mmio_writel(AST2400_SPI_FLASH_MMIO_ADDR, ast2400_device_bar + 0xf004);
+	pci_mmio_writel(0x1, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
@@ -159,13 +159,13 @@ static int ast2400_set_a2b_bridge_spi_flash(void)
 static int ast2400_disable_cpu(void) {
 	uint32_t dword;
 
-	if (aspeed_halt_cpu) {
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
+	if (ast2400_device_halt_cpu) {
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
 		if (((dword & AST2400_SCU_BOOT_SRC_MASK) != AST2400_SCU_BOOT_SPI)
 			&& ((dword & AST2400_SCU_BOOT_SRC_MASK) != AST2400_SCU_BOOT_NONE)) {	/* NONE permitted to allow for BMC recovery after Ctrl+C or crash */
 			msg_perr("CPU halt requested but CPU firmware source is not SPI.\n");
-			pci_mmio_writel(0x0, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_PROT_KEY);
-			aspeed_halt_cpu = 0;
+			pci_mmio_writel(0x0, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_PROT_KEY);
+			ast2400_device_halt_cpu = 0;
 			return 1;
 		}
 
@@ -174,12 +174,12 @@ static int ast2400_disable_cpu(void) {
 		 */
 		msg_pinfo("Configuring P2A bridge for WDT access\n");
 		ast2400_set_a2b_bridge_wdt();
-		original_wdt_conf = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_WDT_APB_BRIDGE_OFFSET + AST2400_WDT1_CTL);
-		pci_mmio_writel((original_wdt_conf & ~AST2400_WDT_RESET_MODE_MASK) | AST2400_WDT_RESET_CPU_ONLY, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_WDT_APB_BRIDGE_OFFSET + AST2400_WDT1_CTL);
+		ast2400_original_wdt_conf = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_WDT_APB_BRIDGE_OFFSET + AST2400_WDT1_CTL);
+		pci_mmio_writel((ast2400_original_wdt_conf & ~AST2400_WDT_RESET_MODE_MASK) | AST2400_WDT_RESET_CPU_ONLY, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_WDT_APB_BRIDGE_OFFSET + AST2400_WDT1_CTL);
 
 		/* Disable CPU */
 		ast2400_set_a2b_bridge_scu();
-		pci_mmio_writel((dword & ~AST2400_SCU_BOOT_SRC_MASK) | AST2400_SCU_BOOT_NONE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
+		pci_mmio_writel((dword & ~AST2400_SCU_BOOT_SRC_MASK) | AST2400_SCU_BOOT_NONE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
 	}
 
 	return 0;
@@ -188,15 +188,15 @@ static int ast2400_disable_cpu(void) {
 static int ast2400_enable_cpu(void) {
 	uint32_t dword;
 
-	if (aspeed_halt_cpu && aspeed_resume_cpu) {
+	if (ast2400_device_halt_cpu && ast2400_device_resume_cpu) {
 		/* Re-enable CPU */
 		ast2400_set_a2b_bridge_scu();
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
-		pci_mmio_writel((dword & ~AST2400_SCU_BOOT_SRC_MASK) | AST2400_SCU_BOOT_SPI, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
+		pci_mmio_writel((dword & ~AST2400_SCU_BOOT_SRC_MASK) | AST2400_SCU_BOOT_SPI, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_HW_STRAP);
 
 		/* Reset WDT configuration */
 		ast2400_set_a2b_bridge_wdt();
-		pci_mmio_writel((original_wdt_conf & ~AST2400_WDT_RESET_MODE_MASK) | AST2400_WDT_RESET_CPU_ONLY, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_WDT_APB_BRIDGE_OFFSET + AST2400_WDT1_CTL);
+		pci_mmio_writel((ast2400_original_wdt_conf & ~AST2400_WDT_RESET_MODE_MASK) | AST2400_WDT_RESET_CPU_ONLY, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_WDT_APB_BRIDGE_OFFSET + AST2400_WDT1_CTL);
 	}
 
 	return 0;
@@ -207,7 +207,7 @@ static int ast2400_shutdown(void *data) {
 	ast2400_enable_cpu();
 
 	/* Disable backdoor APB access */
-	pci_mmio_writel(0x0, aspeed_bar + 0xf000);
+	pci_mmio_writel(0x0, ast2400_device_bar + 0xf000);
 
 	return 0;
 }
@@ -220,32 +220,32 @@ int ast2400_init(void)
 
 	char *arg;
 
-	aspeed_spi_bus = 0;
+	ast2400_device_spi_bus = 0;
 	arg = extract_programmer_param("spibus");
 	if (arg) {
 		if (!strcmp(arg,"host"))
-			aspeed_host_mode = 1;
+			ast2400_device_host_mode = 1;
 		else
-			aspeed_spi_bus = strtol(arg, NULL, 0);
+			ast2400_device_spi_bus = strtol(arg, NULL, 0);
 	}
 	free(arg);
 
-	aspeed_halt_cpu = 0;
+	ast2400_device_halt_cpu = 0;
 	arg = extract_programmer_param("cpu");
 	if (arg && !strcmp(arg,"pause")) {
-		aspeed_halt_cpu = 1;
-		aspeed_resume_cpu = 1;
+		ast2400_device_halt_cpu = 1;
+		ast2400_device_resume_cpu = 1;
 	}
 	if (arg && !strcmp(arg,"halt")) {
-		aspeed_halt_cpu = 1;
-		aspeed_resume_cpu = 0;
+		ast2400_device_halt_cpu = 1;
+		ast2400_device_resume_cpu = 0;
 	}
 	arg = extract_programmer_param("tickle");
 	if (arg && !strcmp(arg,"true"))
-		aspeed_tickle_fw = 1;
+		ast2400_device_tickle_fw = 1;
 	free(arg);
 
-	if ((aspeed_host_mode == 0) && ((aspeed_spi_bus < 0) || (aspeed_spi_bus > 4))) {
+	if ((ast2400_device_host_mode == 0) && ((ast2400_device_spi_bus < 0) || (ast2400_device_spi_bus > 4))) {
 		msg_perr("SPI bus number out of range!  Valid values are 0 - 4.\n");
 		return 1;
 	}
@@ -253,7 +253,7 @@ int ast2400_init(void)
 	if (rget_io_perms())
 		return 1;
 
-	dev = pcidev_init(bmc_aspeed, PCI_BASE_ADDRESS_1);
+	dev = pcidev_init(bmc_aspeed_ast2400, PCI_BASE_ADDRESS_1);
 	if (!dev)
 		return 1;
 
@@ -261,24 +261,24 @@ int ast2400_init(void)
 	if (!io_base_addr)
 		return 1;
 
-	msg_pinfo("Detected ASPEED MMIO base address: 0x%p.\n", (void*)io_base_addr);
+	msg_pinfo("Detected ASPEED MMIO base address: %p.\n", (void*)io_base_addr);
 
-	aspeed_bar = rphysmap("ASPEED", io_base_addr, ASPEED_MEMMAP_SIZE);
-	if (aspeed_bar == ERROR_PTR)
+	ast2400_device_bar = rphysmap("ASPEED", io_base_addr, ASPEED_MEMMAP_SIZE);
+	if (ast2400_device_bar == ERROR_PTR)
 		return 1;
 
         if (register_shutdown(ast2400_shutdown, dev))
                 return 1;
 
 	io_base_addr += ASPEED_P2A_OFFSET;
-	msg_pinfo("ASPEED P2A base address: 0x%p.\n", (void*)io_base_addr);
+	msg_pinfo("ASPEED P2A base address: %p.\n", (void*)io_base_addr);
 
 	msg_pinfo("Configuring P2A bridge for SCU access\n");
 	ast2400_set_a2b_bridge_scu();
-	pci_mmio_writel(AST2400_SCU_PASSWORD, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_PROT_KEY);
+	pci_mmio_writel(AST2400_SCU_PASSWORD, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_PROT_KEY);
 
-	dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_MISC_CTL);
-	pci_mmio_writel(dword & ~((0x1 << 24) | (0x2 << 22)), aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_MISC_CTL);
+	dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_MISC_CTL);
+	pci_mmio_writel(dword & ~((0x1 << 24) | (0x2 << 22)), ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SCU_APB_BRIDGE_OFFSET + AST2400_SCU_MISC_CTL);
 
 	/* Halt CPU if requested */
 	if (ast2400_disable_cpu())
@@ -287,34 +287,34 @@ int ast2400_init(void)
 	msg_pinfo("Configuring P2A bridge for SMC access\n");
 	ast2400_set_a2b_bridge_smc();
 
-	if (aspeed_host_mode) {
+	if (ast2400_device_host_mode) {
 		msg_pinfo("Configuring P2A bridge for SPI access\n");
 		ast2400_set_a2b_bridge_spi();
 
 		divisor = 0;	/* Slowest speed for now */
 
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
 		dword &= ~AST2400_SPI_SPEED_MASK;
 		dword |= (divisor << 8);
 		dword &= ~AST2400_SPI_CPOL_1;
 		dword &= ~AST2400_SPI_LSB_FIRST_CTRL;	/* MSB first */
 		dword &= ~AST2400_SPI_IO_MODE_MASK;	/* Single bit I/O mode */
-		pci_mmio_writel(dword, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
+		pci_mmio_writel(dword, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
 	}
 	else {
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_FMC00);
-		if (((dword >> (aspeed_spi_bus * 2)) & 0x3) != 0x2) {
-			msg_perr("CE%01x Flash type is not SPI!\n", aspeed_spi_bus);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_FMC00);
+		if (((dword >> (ast2400_device_spi_bus * 2)) & 0x3) != 0x2) {
+			msg_perr("CE%01x Flash type is not SPI!\n", ast2400_device_spi_bus);
 			return 1;
 		}
 
-		msg_pinfo("Enabling CE%01x write\n", aspeed_spi_bus);
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_FMC00);
-		pci_mmio_writel(dword | (0x1 << (16 + aspeed_spi_bus)), aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_FMC00);
+		msg_pinfo("Enabling CE%01x write\n", ast2400_device_spi_bus);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_FMC00);
+		pci_mmio_writel(dword | (0x1 << (16 + ast2400_device_spi_bus)), ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_FMC00);
 
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_SEG(aspeed_spi_bus));
-		aspeed_flash_mmio_offset = ((dword >> 16) & 0x3f) * 0x800000;
-		msg_pinfo("Using CE%01x offset %08x\n", aspeed_spi_bus, aspeed_flash_mmio_offset);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_SEG(ast2400_device_spi_bus));
+		ast2400_device_flash_mmio_offset = ((dword >> 16) & 0x3f) * 0x800000;
+		msg_pinfo("Using CE%01x offset 0x%08x\n", ast2400_device_spi_bus, ast2400_device_flash_mmio_offset);
 	}
 
 	register_spi_master(&spi_master_ast2400);
@@ -341,13 +341,13 @@ static void ast2400_spi_xfer_data(struct flashctx *flash,
 		dword |= writearr[i + 1] << 8;
 		dword |= writearr[i + 2] << 16;
 		dword |= writearr[i + 3] << 24;
-		pci_mmio_writel(dword, aspeed_bar + ASPEED_P2A_OFFSET);
+		pci_mmio_writel(dword, ast2400_device_bar + ASPEED_P2A_OFFSET);
 	}
 	for (; i < writecnt; i++)
-		pci_mmio_writeb(writearr[i], aspeed_bar + ASPEED_P2A_OFFSET);
+		pci_mmio_writeb(writearr[i], ast2400_device_bar + ASPEED_P2A_OFFSET);
 	programmer_delay(1);
 	for (i = 0; i < readcnt;) {
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET);
 		if (i < readcnt)
 			readarr[i] = dword & 0xff;
 		i++;
@@ -377,13 +377,13 @@ static int ast2400_spi_send_command(struct flashctx *flash,
 
 	msg_pspew("%s, cmd=0x%02x, writecnt=%d, readcnt=%d\n", __func__, *writearr, writecnt, readcnt);
 
-	if (aspeed_host_mode) {
+	if (ast2400_device_host_mode) {
 		/* Set up user command mode */
 		ast2400_set_a2b_bridge_spi();
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
-		pci_mmio_writel(dword | AST2400_SPI_CFG_WRITE_EN, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
-		pci_mmio_writel(dword | AST2400_SPI_CMD_USER_MODE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
+		pci_mmio_writel(dword | AST2400_SPI_CFG_WRITE_EN, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
+		pci_mmio_writel(dword | AST2400_SPI_CMD_USER_MODE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
 
 	        /* Transfer data */
 		ast2400_set_a2b_bridge_spi_flash();
@@ -391,18 +391,18 @@ static int ast2400_spi_send_command(struct flashctx *flash,
 
 		/* Tear down user command mode */
 		ast2400_set_a2b_bridge_spi();
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
-		pci_mmio_writel((dword & ~AST2400_SPI_CMD_MASK) | AST2400_SPI_CMD_FAST_R_MODE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
-		pci_mmio_writel(dword & ~AST2400_SPI_CFG_WRITE_EN, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
+		pci_mmio_writel((dword & ~AST2400_SPI_CMD_MASK) | AST2400_SPI_CMD_FAST_R_MODE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CTL);
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
+		pci_mmio_writel(dword & ~AST2400_SPI_CFG_WRITE_EN, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SPI_CFG);
 	}
 	else {
 		/* Set up user command mode */
 		ast2400_set_a2b_bridge_smc();
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
-		pci_mmio_writel(dword | AST2400_SPI_CMD_USER_MODE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
-		pci_mmio_writel(dword & ~AST2400_SPI_STOP_CE_ACTIVE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
+		pci_mmio_writel(dword | AST2400_SPI_CMD_USER_MODE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
+		pci_mmio_writel(dword & ~AST2400_SPI_STOP_CE_ACTIVE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
 
 		/* Transfer data */
 		ast2400_set_a2b_bridge_smc_flash();
@@ -410,13 +410,13 @@ static int ast2400_spi_send_command(struct flashctx *flash,
 
 		/* Tear down user command mode */
 		ast2400_set_a2b_bridge_smc();
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
-		pci_mmio_writel(dword | AST2400_SPI_STOP_CE_ACTIVE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
-		dword = pci_mmio_readl(aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
-		pci_mmio_writel((dword & ~AST2400_SPI_CMD_MASK) | AST2400_SPI_CMD_FAST_R_MODE, aspeed_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(aspeed_spi_bus));
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
+		pci_mmio_writel(dword | AST2400_SPI_STOP_CE_ACTIVE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
+		dword = pci_mmio_readl(ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
+		pci_mmio_writel((dword & ~AST2400_SPI_CMD_MASK) | AST2400_SPI_CMD_FAST_R_MODE, ast2400_device_bar + ASPEED_P2A_OFFSET + AST2400_SMC_CE_CTL(ast2400_device_spi_bus));
 	}
 
-	if (aspeed_tickle_fw) {
+	if (ast2400_device_tickle_fw) {
 		ast2400_enable_cpu();
 		programmer_delay(100);
 		ast2400_disable_cpu();
