@@ -65,8 +65,10 @@
 
 #define AST1100_WDT1_CTR		0x00
 #define AST1100_WDT1_CTR_RELOAD		0x04
+#define AST1100_WDT1_CTR_RESTART	0x08
 #define AST1100_WDT1_CTL		0x0c
 
+#define AST1100_WDT_SET_CLOCK		(0x1 << 4)
 #define AST1100_WDT_RESET_SYSTEM	(0x1 << 1)
 #define AST1100_WDT_ENABLE		(0x1 << 0)
 
@@ -154,6 +156,8 @@ static int ast1100_disable_cpu(void) {
 		/* Disable CPU */
 		ast1100_set_a2b_bridge_scu();
 		pci_mmio_writel((dword & ~AST1100_SCU_BOOT_SRC_MASK) | AST1100_SCU_BOOT_NONE, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_SCU_APB_BRIDGE_OFFSET + AST1100_SCU_HW_STRAP);
+		ast1100_original_wdt_conf = pci_mmio_readl(ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTL);
+		pci_mmio_writel(ast1100_original_wdt_conf & 0xffff0, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTL);
 	}
 
 	return 0;
@@ -183,9 +187,12 @@ static int ast1100_reset_cpu(void) {
 
 		/* Initiate reset */
 		msg_pinfo("Setting WDT to reset CPU immediately\n");
-		pci_mmio_writel(0x1, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTR);
+		pci_mmio_writel(ast1100_original_wdt_conf & 0xffff0, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTL);
 		pci_mmio_writel(0xec08ce00, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTR_RELOAD);
+		pci_mmio_writel(0x4755, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTR_RESTART);
+		pci_mmio_writel(AST1100_WDT_SET_CLOCK, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTL);
 		pci_mmio_writel(AST1100_WDT_RESET_SYSTEM | AST1100_WDT_ENABLE, ast1100_device_bar + ASPEED_P2A_OFFSET + AST1100_WDT_APB_BRIDGE_OFFSET + AST1100_WDT1_CTL);
+	
 	}
 
 	return 0;
